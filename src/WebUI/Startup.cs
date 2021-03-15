@@ -27,11 +27,11 @@ namespace CleanArchitecture.WebUI
             Configuration = configuration;
             var context = new CustomAssemblyLoadContext();
             var is64bit = false;
-#if DEBUG
-            is64bit = System.Environment.Is64BitOperatingSystem;
-#endif
-            context.LoadUnmanagedLibrary(Path.Combine(Directory.GetCurrentDirectory(), is64bit ? "x64" : "x86", "libwkhtmltox.dll"));
-            context.LoadUnmanagedLibrary(Path.Combine(Directory.GetCurrentDirectory(), is64bit ? "x64" : "x86", "pdfium.dll"));
+//#if DEBUG
+//            is64bit = System.Environment.Is64BitOperatingSystem;
+//#endif
+//            context.LoadUnmanagedLibrary(Path.Combine(Directory.GetCurrentDirectory(), is64bit ? "x64" : "x86", "libwkhtmltox.dll"));
+//            context.LoadUnmanagedLibrary(Path.Combine(Directory.GetCurrentDirectory(), is64bit ? "x64" : "x86", "pdfium.dll"));
         }
 
         public IConfiguration Configuration { get; }
