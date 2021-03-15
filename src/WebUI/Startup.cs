@@ -25,8 +25,8 @@ namespace CleanArchitecture.WebUI
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
-            var context = new CustomAssemblyLoadContext();
-            var is64bit = false;
+            //var context = new CustomAssemblyLoadContext();
+            //var is64bit = false;
 //#if DEBUG
 //            is64bit = System.Environment.Is64BitOperatingSystem;
 //#endif
@@ -84,7 +84,6 @@ namespace CleanArchitecture.WebUI
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseDatabaseErrorPage();
             }
             else
             {

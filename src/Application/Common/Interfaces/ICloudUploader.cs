@@ -9,7 +9,7 @@ namespace CleanArchitecture.Application.Common.Interfaces
 {
     public interface ICloudUploader
     {
-        Task<string> UploadFileAsync(string containerName, string fileName, Stream dataStream);
-        Task<string> UploadFileAsync(string containerName, string fileName, byte[] dataStream);
+        Task<string> UploadFileAsync(string fileName, Stream dataStream);
+        Task<string> UploadFileAsync(string fileName, byte[] dataStream);
     }
 }

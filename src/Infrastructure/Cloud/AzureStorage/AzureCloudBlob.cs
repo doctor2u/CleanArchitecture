@@ -20,9 +20,7 @@ namespace CleanArchitecture.Infrastructure.Cloud.AzureStorage
         private static volatile AzureCloudBlob instance;
         private static readonly object syncRoot = new object();
 
-        public static string CONTAINER_FILE_PUBLIC = "publicfiles";
-        public static string CONTAINER_IMAGE_PUBLIC = "publicimages";
-        public static string CONTAINER_IMAGE_PRIVATE = "privateimages";
+        public static string PROJECT_CONTAINER = "CleanArchitecture";
         private readonly CloudStorageAccount storageAccount;
 
 
@@ -62,14 +60,9 @@ namespace CleanArchitecture.Infrastructure.Cloud.AzureStorage
 
         #region Blob
 
-        public async Task<string> CreateFileBlobAsync(string fileName, Stream dataStream, string containerName = null)
+        public async Task<string> CreateFileBlobAsync(string fileName, Stream dataStream)
         {
-            if (string.IsNullOrEmpty(containerName))
-            {
-                containerName = CONTAINER_FILE_PUBLIC;
-            }
-
-            var container = BlobClient.GetContainerReference(containerName);
+            var container = BlobClient.GetContainerReference(PROJECT_CONTAINER);
             await container.CreateIfNotExistsAsync();
 
             // configure container for public access
@@ -86,14 +79,9 @@ namespace CleanArchitecture.Infrastructure.Cloud.AzureStorage
             return blob.Uri.ToString();
         }
 
-        public async Task<string> CreateFileBlobBAsync(string fileName, byte[] dataStream, string containerName = null)
+        public async Task<string> CreateFileBlobBAsync(string fileName, byte[] dataStream)
         {
-            if (string.IsNullOrEmpty(containerName))
-            {
-                containerName = CONTAINER_FILE_PUBLIC;
-            }
-
-            var container = BlobClient.GetContainerReference(containerName);
+            var container = BlobClient.GetContainerReference(PROJECT_CONTAINER);
             await container.CreateIfNotExistsAsync();
 
             // configure container for public access
@@ -111,12 +99,12 @@ namespace CleanArchitecture.Infrastructure.Cloud.AzureStorage
         }
 
 
-        public async Task<(string fileUrl, string sasToken)> CreateFileBlobWithSASAsync(string containerName, string fileName, Stream dataStream, bool isParent = true, int validityHour = 12, int? validityMinute = 20)
+        public async Task<(string fileUrl, string sasToken)> CreateFileBlobWithSASAsync(string fileName, Stream dataStream, bool isParent = true, int validityHour = 12, int? validityMinute = 20)
         {
             var sasName = Path.GetFileNameWithoutExtension(fileName);
             string sasContainerToken = "";
 
-            var container = BlobClient.GetContainerReference(containerName);
+            var container = BlobClient.GetContainerReference(PROJECT_CONTAINER);
             await container.CreateIfNotExistsAsync();
 
             if (isParent)
@@ -161,11 +149,11 @@ namespace CleanArchitecture.Infrastructure.Cloud.AzureStorage
             return (blob.Uri.ToString(), sasContainerToken);
         }
 
-        public async Task<(List<string> fileUrls, string sasToken)> CreateMultiFileBlobWithSASAsync(string containerName, string sasName, List<string> fileNames, List<Stream> dataStreams, bool isParent = true)
+        public async Task<(List<string> fileUrls, string sasToken)> CreateMultiFileBlobWithSASAsync(string sasName, List<string> fileNames, List<Stream> dataStreams, bool isParent = true)
         {
             string sasContainerToken = "";
 
-            var container = BlobClient.GetContainerReference(containerName);
+            var container = BlobClient.GetContainerReference(PROJECT_CONTAINER);
             await container.CreateIfNotExistsAsync();
 
             if (isParent)
@@ -220,16 +208,11 @@ namespace CleanArchitecture.Infrastructure.Cloud.AzureStorage
             return (blobUris, sasContainerToken);
         }
 
-        //internal Task<string> CreateFileBlobAsync(string containerName, string fileName, Stream pdfStream)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        public async Task<string> RenewBlobSASPolicyAsync(string containerName, string fileName)
+        public async Task<string> RenewBlobSASPolicyAsync(string fileName)
         {
             var sasName = Path.GetFileNameWithoutExtension(fileName);
 
-            var container = BlobClient.GetContainerReference(containerName);
+            var container = BlobClient.GetContainerReference(PROJECT_CONTAINER);
             var blob = container.GetBlockBlobReference(fileName);
 
             // Clear any existing access policies on container.
@@ -268,9 +251,9 @@ namespace CleanArchitecture.Infrastructure.Cloud.AzureStorage
             return false;
         }
 
-        public async Task<Stream> GetBlobAsStreamAsync(string containerName, string fileName)
+        public async Task<Stream> GetBlobAsStreamAsync(string fileName)
         {
-            var container = BlobClient.GetContainerReference(containerName);
+            var container = BlobClient.GetContainerReference(PROJECT_CONTAINER);
             var blob = container.GetBlockBlobReference(fileName);
 
             Stream fileStream = new MemoryStream();

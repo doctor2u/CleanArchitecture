@@ -13,15 +13,15 @@ namespace CleanArchitecture.Infrastructure.Cloud
         {
             this.configuration = configuration;
         }
-        
-        public Task<string> UploadFileAsync(string containerName, string fileName, Stream dataStream)
+
+        public Task<string> UploadFileAsync(string fileName, Stream dataStream)
         {
-            return AzureCloudBlob.GetInstance(configuration).CreateFileBlobAsync(fileName, dataStream, containerName);
+            return AzureCloudBlob.GetInstance(configuration).CreateFileBlobAsync(fileName, dataStream);
         }
 
-        public Task<string> UploadFileAsync(string containerName, string fileName, byte[] dataStream)
+        public Task<string> UploadFileAsync(string fileName, byte[] dataStream)
         {
-            return AzureCloudBlob.GetInstance(configuration).CreateFileBlobBAsync(fileName, dataStream, containerName);
+            return AzureCloudBlob.GetInstance(configuration).CreateFileBlobBAsync(fileName, dataStream);
         }
     }
 }

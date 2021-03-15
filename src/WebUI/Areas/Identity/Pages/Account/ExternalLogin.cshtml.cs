@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Security.Claims;
@@ -9,11 +8,15 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using CleanArchitecture.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using CleanArchitecture.Application.Common.Interfaces;
+using Microsoft.Extensions.Configuration;
+using System.Net.Http;
+using Newtonsoft.Json;
+using CleanArchitecture.WebUI.Models;
 
 namespace CleanArchitecture.WebUI.Areas.Identity.Pages.Account
 {
@@ -24,17 +27,23 @@ namespace CleanArchitecture.WebUI.Areas.Identity.Pages.Account
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSender _emailSender;
         private readonly ILogger<ExternalLoginModel> _logger;
+        private readonly ICloudUploader _cloudUploader;
+        private readonly IConfiguration _configuration;
 
         public ExternalLoginModel(
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
             ILogger<ExternalLoginModel> logger,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            IConfiguration configuration,
+            ICloudUploader cloudUploader)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _logger = logger;
             _emailSender = emailSender;
+            _cloudUploader = cloudUploader;
+            _configuration = configuration;
         }
 
         [BindProperty]
@@ -82,11 +91,46 @@ namespace CleanArchitecture.WebUI.Areas.Identity.Pages.Account
                 return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
             }
 
+            var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+            if (!email.EndsWith("@doctor2u.my") && !email.EndsWith("@bphealthcare.com"))
+            {
+                ErrorMessage = $"Error from external provider: Only BP Healthcare email allowed to login";
+                return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
+            }
+
             // Sign in the user with this external login provider if the user already has a login.
             var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor : true);
             if (result.Succeeded)
             {
                 _logger.LogInformation("{Name} logged in with {LoginProvider} provider.", info.Principal.Identity.Name, info.LoginProvider);
+
+                var user = await _userManager.FindByEmailAsync(email);
+                if (string.IsNullOrEmpty(user.UserPhoto) && (email.EndsWith("@doctor2u.my") || email.EndsWith("@bphealthcare.com")))
+                {
+                    try
+                    {
+                        string nameIdentifier = info.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+                        string googleApiKey = _configuration["Authentication:Google:ApiKey"];
+                        string jsonUrl = $"https://people.googleapis.com/v1/people/{nameIdentifier}?personFields=photos&key={googleApiKey}";
+                        using (HttpClient httpClient = new HttpClient())
+                        {
+                            string s = await httpClient.GetStringAsync(jsonUrl);
+                            var deserializeObject = JsonConvert.DeserializeObject<GoogleUserModel>(s);
+                            string thumbnailUrl = deserializeObject.Photos.FirstOrDefault()?.Url;
+                            if (!string.IsNullOrEmpty(thumbnailUrl))
+                            {
+                                byte[] thumbnail = await httpClient.GetByteArrayAsync(thumbnailUrl);
+                                var photoUrl = await _cloudUploader.UploadFileAsync($"userphoto/{nameIdentifier}.jpg", thumbnail);
+                                user.UserPhoto = photoUrl;
+                                await _userManager.UpdateAsync(user);
+                            }
+                        }
+                    }
+                    catch (System.Exception)
+                    {
+                    }
+                }
+
                 return LocalRedirect(returnUrl);
             }
             if (result.IsLockedOut)
@@ -141,8 +185,8 @@ namespace CleanArchitecture.WebUI.Areas.Identity.Pages.Account
                             values: new { area = "Identity", userId = userId, code = code },
                             protocol: Request.Scheme);
 
-                        await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                            $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+                        _emailSender.SendEmail("Confirm your email", $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.",
+                            new List<string> { Input.Email });
 
                         // If account confirmation is required, we need to show the link if we don't have a real email sender
                         if (_userManager.Options.SignIn.RequireConfirmedAccount)
